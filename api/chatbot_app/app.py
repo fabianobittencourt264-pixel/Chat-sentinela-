@@ -14,8 +14,8 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(script_dir, 'config.json')
 
 # --- Secure API Key and Chatbot Initialization ---
-# Load the OpenAI API key from environment variables
-api_key = os.environ.get("OPENAI_API_KEY")
+# Load the Google Gemini API key from environment variables
+api_key = os.environ.get("GEMINI_API_KEY")
 
 chatbot = None
 initialization_error = None
