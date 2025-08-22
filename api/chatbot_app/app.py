@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template, request, jsonify
-from chatbot_logic import Chatbot
+# Use a relative import now that this is a package
+from .chatbot_logic import Chatbot
 
 # Initialize the Flask application
 app = Flask(__name__)
@@ -19,6 +20,14 @@ except FileNotFoundError:
     # Handle the case where the config file is missing
     # In a real app, you might log this and exit, but for now, we'll raise an error.
     raise RuntimeError(f"Configuration file not found at {CONFIG_PATH}. Make sure it's in the same directory as app.py.")
+
+@app.route("/health")
+def health_check():
+    """
+    A simple health check endpoint to confirm the app is running.
+    """
+    return {"status": "ok"}
+
 
 @app.route("/")
 def index():

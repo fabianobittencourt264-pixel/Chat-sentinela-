@@ -1,23 +1,14 @@
 {
-  "version": 2,
   "builds": [
     {
-      "src": "chatbot_app/app.py",
-      "use": "@vercel/python",
-      "config": {
-        "includeFiles": [
-          "chatbot_app/config.json",
-          "chatbot_app/chatbot_logic.py",
-          "chatbot_app/templates/**",
-          "chatbot_app/static/**"
-        ]
-      }
+      "src": "api/chatbot_app/app.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "chatbot_app/app.py"
+      "dest": "/api/chatbot_app/app.py"
     }
   ]
 }
