@@ -10,6 +10,37 @@ Toda a lógica, conhecimento e persona do chatbot são carregados dinamicamente 
 
 - Python 3.7 ou superior
 - `pip` (gerenciador de pacotes do Python)
+- Uma chave de API (API Key) da [OpenAI](https://platform.openai.com/api-keys).
+
+---
+
+## Configuração da IA (OpenAI)
+
+A inteligência do chatbot agora é potencializada pela API da OpenAI (GPT-4o). Para que a aplicação funcione, você precisa fornecer sua chave de API de forma segura através de uma variável de ambiente.
+
+### Para Deploy na Vercel (Produção)
+
+1.  No painel do seu projeto na Vercel, vá para **Settings** -> **Environment Variables**.
+2.  Clique em **Add New**.
+3.  No campo **Name**, digite `OPENAI_API_KEY`.
+4.  No campo **Value**, cole a sua chave de API da OpenAI (ela deve começar com `sk-...`).
+5.  Salve a variável. A Vercel irá automaticamente reiniciar seu projeto com a nova variável de ambiente configurada.
+
+### Para Testes Locais
+
+Você precisa definir a variável de ambiente no seu terminal antes de rodar o `gunicorn`.
+
+- **No macOS/Linux:**
+  ```bash
+  export OPENAI_API_KEY="sua_chave_de_api_aqui"
+  gunicorn api.chatbot_app.app:app
+  ```
+
+- **No Windows (Command Prompt):**
+  ```bash
+  set OPENAI_API_KEY="sua_chave_de_api_aqui"
+  gunicorn api.chatbot_app.app:app
+  ```
 
 ---
 

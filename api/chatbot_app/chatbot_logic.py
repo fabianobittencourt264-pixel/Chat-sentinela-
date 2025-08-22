@@ -1,105 +1,75 @@
 import json
-import re
+from openai import OpenAI
 
 class Chatbot:
     """
-    The core logic for the chatbot. It loads its configuration from a JSON
-    file and uses that to generate responses to user messages.
+    The core logic for the chatbot. It uses the OpenAI API to generate
+    responses, guided by a configuration file.
     """
 
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, api_key: str):
         """
-        Initializes the Chatbot by loading its configuration.
+        Initializes the Chatbot by loading its configuration and setting up
+        the OpenAI client.
 
         Args:
             config_path: The file path to the config.json file.
+            api_key: The OpenAI API key.
         """
         with open(config_path, 'r', encoding='utf-8') as f:
             self.config = json.load(f)
 
-        # Pre-compile regexes for intent matching for efficiency
-        self.intent_patterns = {
-            intent: re.compile(fr'\b{re.escape(term)}\b', re.IGNORECASE)
-            for intent, term in self.config['lexicon']['intents'].items()
-        }
+        if not api_key:
+            raise ValueError("OpenAI API key is required.")
 
-    def _format_response(self, response_data: dict) -> str:
+        self.client = OpenAI(api_key=api_key)
+        self.system_prompt = self._build_system_prompt()
+
+    def _build_system_prompt(self) -> str:
         """
-        Formats the structured response data from the config into a single
-        human-readable string.
-
-        Args:
-            response_data: A dictionary containing response parts like 'summary',
-                           'steps', 'channels', etc.
-
-        Returns:
-            A formatted string combining all the available information.
+        Builds the system prompt from the configuration file to instruct the AI.
         """
-        parts = []
-        if 'summary' in response_data:
-            parts.append(response_data['summary'])
+        persona = self.config.get('persona', 'um assistente prestativo')
+        description = self.config.get('description', '')
+        style = self.config.get('style', {})
+        tone = style.get('tone', 'claro e conciso')
+        language = style.get('language', 'Português do Brasil')
 
-        if 'points' in response_data and response_data['points']:
-            points_str = "\n".join(f"- {point}" for point in response_data['points'])
-            parts.append(points_str)
-
-        if 'steps' in response_data and response_data['steps']:
-            steps_str = "\n".join(f"- {step}" for step in response_data['steps'])
-            parts.append(f"**Passos:**\n{steps_str}")
-
-        if 'documents_taxes_deadlines' in response_data:
-            parts.append(f"**Documentos e Prazos:** {response_data['documents_taxes_deadlines']}")
-
-        if 'channels' in response_data:
-            # The 'channels' in the example prompts is a string, not a lookup key.
-            # This part of the logic needs to be flexible.
-            # For now, we just append the string.
-            parts.append(f"**Canais de Atendimento:** {response_data['channels']}")
-
-        if 'notes' in response_data:
-            parts.append(f"**Observação:** {response_data['notes']}")
-
-        return "\n\n".join(parts)
+        prompt = (
+            f"Você é '{persona}'. {description} "
+            f"Seu tom deve ser {tone}. "
+            f"Responda em {language}. "
+            "Se a pergunta for sobre um serviço público de Natividade da Serra, "
+            "use as informações das fontes oficiais para basear sua resposta, mas não "
+            "se limite a elas. As fontes são: "
+            f"Prefeitura: {self.config['sources']['prefeitura']}, "
+            f"Carta de Serviços: {self.config['sources']['carta_geral']}. "
+            "Se não souber a resposta, diga que não encontrou a informação e sugira "
+            "contatar a ouvidoria."
+        )
+        return prompt
 
     def get_response(self, user_message: str) -> str:
         """
-        Generates a response by finding the best-matching example prompt.
-
-        It calculates a similarity score between the user's message and each
-        example user query in the config file based on word overlap. If a
-        sufficiently good match is found, it returns the corresponding
-        assistant's response. Otherwise, it returns a fallback message.
+        Generates a response to the user's message by calling the OpenAI API.
 
         Args:
             user_message: The message sent by the user.
 
         Returns:
-            A string containing the chatbot's reply.
+            A string containing the chatbot's AI-generated reply.
         """
-        best_match = None
-        # A threshold of 1 means at least two words must match.
-        highest_score = 1
-        user_words = set(re.findall(r'\b\w+\b', user_message.lower()))
-
-        for example in self.config['example_prompts']:
-            example_words = set(re.findall(r'\b\w+\b', example['user'].lower()))
-            score = len(user_words.intersection(example_words))
-
-            if score > highest_score:
-                highest_score = score
-                best_match = example
-
-        # If a good match is found, format and return the response
-        if best_match:
-            return self._format_response(best_match['assistant'])
-
-        # Otherwise, return the fallback response
-        fallback_info = self.config['fallback']['unknown_info']
-        if '+ canal' in fallback_info:
-            prefeitura_channel = self.config['channels']['prefeitura']
-            contact_info = f"Endereço: {prefeitura_channel['address']}, Telefone: {prefeitura_channel['phone']}"
-            fallback_message = fallback_info.replace(' + canal', f'\n{contact_info}')
-        else:
-            fallback_message = fallback_info
-
-        return fallback_message
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o",  # Using a powerful and cost-effective model
+                messages=[
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                temperature=0.7, # A bit of creativity
+                max_tokens=500,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"Error calling OpenAI API: {e}")
+            return "Desculpe, não consegui me conectar com a minha inteligência artificial no momento. Tente novamente mais tarde."

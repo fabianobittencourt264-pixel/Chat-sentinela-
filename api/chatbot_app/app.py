@@ -13,13 +13,21 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 # This makes the app runnable from any directory.
 CONFIG_PATH = os.path.join(script_dir, 'config.json')
 
-# Create an instance of the chatbot, which loads the configuration
+# --- Secure API Key and Chatbot Initialization ---
+# Load the OpenAI API key from environment variables
+api_key = os.environ.get("OPENAI_API_KEY")
+
+chatbot = None
+initialization_error = None
+
 try:
-    chatbot = Chatbot(config_path=CONFIG_PATH)
-except FileNotFoundError:
-    # Handle the case where the config file is missing
-    # In a real app, you might log this and exit, but for now, we'll raise an error.
-    raise RuntimeError(f"Configuration file not found at {CONFIG_PATH}. Make sure it's in the same directory as app.py.")
+    # Pass the API key to the Chatbot constructor
+    chatbot = Chatbot(config_path=CONFIG_PATH, api_key=api_key)
+except (FileNotFoundError, ValueError) as e:
+    # Catch initialization errors (e.g., missing config or API key)
+    # and store them to be reported via the API.
+    initialization_error = str(e)
+    print(f"FATAL: Chatbot could not be initialized. Error: {initialization_error}")
 
 @app.route("/health")
 def health_check():
@@ -42,6 +50,10 @@ def ask():
     Handles the user's message from the frontend, gets a response from the
     chatbot logic, and returns it as JSON.
     """
+    # First, check if the chatbot was initialized correctly.
+    if initialization_error:
+        return jsonify({"error": f"Chatbot is not available: {initialization_error}"}), 503
+
     if not request.is_json:
         return jsonify({"error": "Request must be JSON"}), 400
 
